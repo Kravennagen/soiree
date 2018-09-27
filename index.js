@@ -63,12 +63,12 @@ function authorize(credentials, callback) {
     });
   }
 
-  function launch(row, succ, spreadsheetId, sheets){
+  function launch(row, succ, spreadsheetId, sheets, pseudo){
     //console.log(row);
     //console.log(spreadsheetId);
   //  console.log(sheets);
     const myRange = {
-      sheetId: 70429597,
+      sheetId: 882461340,
       startRowIndex: succ-1,
       endRowIndex: succ,
       startColumnIndex: 3,
@@ -81,10 +81,10 @@ function authorize(credentials, callback) {
           booleanRule: {
             condition: {
               type: 'CUSTOM_FORMULA',
-              values: [{userEnteredValue: '=EXACT("'+row+'";"2-over")'}],
+              values: [{userEnteredValue: '=EXACT("'+row+'";'+pseudo}],
             },
             format: {
-              backgroundColor: {red: 0.1, green: 0.1, blue: 0.8},
+              backgroundColor: {red: 0.1, green: 0.8., blue: 0.1},
             },
           },
         },
@@ -112,13 +112,13 @@ function authorize(credentials, callback) {
   * @see https://docs.google.com/spreadsheets/d/1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94/edit#gid=70429597
   * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
   */
-  function listMajors(auth) {
+  function listMajors(auth, pseudo) {
     const sheets = google.sheets({version: 'v4', auth});
     var succ = 0;
     var spreadsheetId= '1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94';
     sheets.spreadsheets.values.get({
       spreadsheetId: '1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94',
-      range: 'Tiki bar!D3:D60',
+      range: 'Awards onoff!D3:D60',
     }, (err, res) => {
       if (err) return console.log('The API returned an error: ' + err);
       const rows = res.data.values;
@@ -128,12 +128,12 @@ function authorize(credentials, callback) {
         rows.map((row) => {
 
           console.log(`${row[0]}`);
-          if(`${row[0]}` == "2-over"){
+          if(`${row[0]}` == pseudo){
             console.log("yes");
             console.log(i);
 
             succ = i;
-            launch(row[0], succ, spreadsheetId, sheets);
+            launch(row[0], succ, spreadsheetId, sheets, pseudo);
             console.log("ttt");
         }
       i++;
