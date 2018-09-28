@@ -25,45 +25,161 @@ myRouter.route('/')
 .all(function(req,res){
       res.json({message : "Bienvenue sur notre Frugal API ", methode : req.method});
 });
-myRouter.route('/piscines/:piscine_id')
+myRouter.route('/soiree/:pseudo')
 .get(function(req,res){
-	  res.json({message : "Vous souhaitez accéder aux informations de la piscine n°" + req.params.piscine_id});
+    var pseudo = req.params.pseudo;
+
+    const fs = require('fs');
+    const readline = require('readline');
+    const {google} = require('googleapis');
+
+    // If modifying these scopes, delete token.json.
+    const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+    const TOKEN_PATH = 'token.json';
+
+    // Load client secrets from a local file.
+    fs.readFile('credentials.json', (err, content) => {
+      if (err) return console.log('Error loading client secret file:', err);
+      // Authorize a client with credentials, then call the Google Sheets API.
+      authorize(JSON.parse(content), listMajors);
+    });
+
+    /**
+    * Create an OAuth2 client with the given credentials, and then execute the
+    * given callback function.
+    * @param {Object} credentials The authorization client credentials.
+    * @param {function} callback The callback to call with the authorized client.
+    */
+    function authorize(credentials, callback) {
+      const {client_secret, client_id, redirect_uris} = credentials.installed;
+      const oAuth2Client = new google.auth.OAuth2(
+        client_id, client_secret, redirect_uris[0]);
+
+        // Check if we have previously stored a token.
+        fs.readFile(TOKEN_PATH, (err, token) => {
+          if (err) return getNewToken(oAuth2Client, callback);
+          oAuth2Client.setCredentials(JSON.parse(token));
+          callback(oAuth2Client);
+        });
+      }
+
+      /**
+      * Get and store new token after prompting for user authorization, and then
+      * execute the given callback with the authorized OAuth2 client.
+      * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
+      * @param {getEventsCallback} callback The callback for the authorized client.
+      */
+      function getNewToken(oAuth2Client, callback) {
+        const authUrl = oAuth2Client.generateAuthUrl({
+          access_type: 'offline',
+          scope: SCOPES,
+        });
+        console.log('Authorize this app by visiting this url:', authUrl);
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        rl.question('Enter the code from that page here: ', (code) => {
+          rl.close();
+          oAuth2Client.getToken(code, (err, token) => {
+            if (err) return console.error('Error while trying to retrieve access token', err);
+            oAuth2Client.setCredentials(token);
+            // Store the token to disk for later program executions
+            fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+              if (err) console.error(err);
+              console.log('Token stored to', TOKEN_PATH);
+            });
+            callback(oAuth2Client);
+          });
+        });
+      }
+
+      function launch(row, succ, spreadsheetId, sheets, pseudo){
+        //console.log(row);
+        //console.log(spreadsheetId);
+      //  console.log(sheets);
+        const myRange = {
+          sheetId: 882461340,
+          startRowIndex: succ-1,
+          endRowIndex: succ,
+          startColumnIndex: 3,
+          endColumnIndex: 4,
+        };
+        const requests = [{
+          addConditionalFormatRule: {
+            rule: {
+              ranges: myRange,
+              booleanRule: {
+                condition: {
+                  type: 'CUSTOM_FORMULA',
+                  values: [{userEnteredValue: '=EXACT("'+row+'";'+pseudo}],
+                },
+                format: {
+                  backgroundColor: {red: 0.1, green: 0.8., blue: 0.1},
+                },
+              },
+            },
+            index: 0,
+          },
+        }];
+        const resource = {
+          requests,
+        };
+        sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          resource,
+        }, (err, response) => {
+          if (err) {
+            // Handle error.
+            console.log(err);
+          } else {
+            console.log(`${response} cells updated.`);
+          }
+        });
+      }
+
+      /**
+      * Prints the names and majors of students in a sample spreadsheet:
+      * @see https://docs.google.com/spreadsheets/d/1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94/edit#gid=70429597
+      * @param {google.auth.OAuth2} auth The authenticated Google OAuth client.
+      */
+      function listMajors(auth, pseudo) {
+        const sheets = google.sheets({version: 'v4', auth});
+        var succ = 0;
+        var spreadsheetId= '1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94';
+        sheets.spreadsheets.values.get({
+          spreadsheetId: '1AAG1IbMNjOb5L1bwuyvTF2klWuQw0VkDvFYqDE7RB94',
+          range: 'Awards onoff!D3:D60',
+        }, (err, res) => {
+          if (err) return console.log('The API returned an error: ' + err);
+          const rows = res.data.values;
+          if (rows.length) {
+            // Print columns A and E, which correspond to indices 0 and 4.
+            var i = 3;
+            rows.map((row) => {
+
+              console.log(`${row[0]}`);
+              if(`${row[0]}` == pseudo){
+                console.log("yes");
+                console.log(i);
+
+                succ = i;
+                launch(row[0], succ, spreadsheetId, sheets, pseudo);
+                console.log("ttt");
+            }
+          i++;
+        });
+
+
+          } else {
+            console.log('No data found.');
+          }
+        });
+      }
+      res.json({message : "Bien envoye"});
 })
-.put(function(req,res){
-	  res.json({message : "Vous souhaitez modifier les informations de la piscine n°" + req.params.piscine_id});
-})
-.delete(function(req,res){
-	  res.json({message : "Vous souhaitez supprimer la piscine n°" + req.params.piscine_id});
-});
-// Je vous rappelle notre route (/piscines).
-myRouter.route('/piscines')
-// J'implémente les méthodes GET, PUT, UPDATE et DELETE
-// GET
-.get(function(req,res){
- res.json({
- message : "Liste les piscines de Lille Métropole avec paramètres :",
- ville : req.query.ville,
- nbResultat : req.query.maxresultat,
- methode : req.method });
- .post(function(req,res){
- res.json({message : "Ajoute une nouvelle piscine à la liste",
- nom : req.body.nom,
- ville : req.body.ville,
- taille : req.body.taille,
- methode : req.method});
-})
-//POST
-.post(function(req,res){
-      res.json({message : "Ajoute une nouvelle piscine à la liste", methode : req.method});
-})
-//PUT
-.put(function(req,res){
-      res.json({message : "Mise à jour des informations d'une piscine dans la liste", methode : req.method});
-})
-//DELETE
-.delete(function(req,res){
-res.json({message : "Suppression d'une piscine dans la liste", methode : req.method});
-});
+
+
 
 // Nous demandons à l'application d'utiliser notre routeur
 app.use(myRouter);
